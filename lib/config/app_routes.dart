@@ -5,4 +5,5 @@ import '../screens/search/search_screen.dart';
 final Map<String, WidgetBuilder> appRoutes = {
   '/': (context) => HomeScreen(),
   '/search': (context) => SearchScreen(),
+  
 };

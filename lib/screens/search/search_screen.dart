@@ -4,8 +4,14 @@ class SearchScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Search Tests")),
-      body: Center(child: Text("Search Functionality Coming Soon")),
+      appBar: AppBar(
+        
+        title: Text('Search', style: TextStyle(color: Colors.white)),
+        backgroundColor: Color(0xFF007AFF),
+      ),
+      body: Center(
+        child: Text('Search Page', style: TextStyle(fontSize: 22)),
+      ),
     );
   }
 }
