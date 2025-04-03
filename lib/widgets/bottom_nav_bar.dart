@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:medical_test_locator/screens/home/home_screen.dart';
-import 'package:medical_test_locator/screens/search/search_screen.dart';
+
 
 class BottomNavBar extends StatefulWidget {
+  const BottomNavBar({super.key});
+
   @override
   _BottomNavBarState createState() => _BottomNavBarState();
 }
 
 class _BottomNavBarState extends State<BottomNavBar> {
   int _selectedIndex = 0;
-  final List<Widget> _screens = [HomeScreen(), SearchScreen()];
+  final List<Widget> _screens = [HomeScreen(),];
 
   void _onItemTapped(int index) {
     setState(() {

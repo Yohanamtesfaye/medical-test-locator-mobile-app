@@ -1,48 +1,11 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
-
-// Dummy data 
-IconData _getIcon(String iconName) {
-  switch (iconName) {
-    case "scanner":
-      return Icons.scanner;
-    case "broken_image":
-      return Icons.broken_image;
-    case "bloodtype":
-      return Icons.bloodtype;
-    case "monitor_heart":
-      return Icons.monitor_heart;
-    default:
-      return Icons.medical_services;
-  }
-}
-
-List<Map<String, dynamic>> testCenters = [
-  {"name": "MRI", "icon": _getIcon("scanner"), "color": Colors.blue},
-  {"name": "X-Ray", "icon": _getIcon("broken_image"), "color": Colors.green},
-  {"name": "Blood Test", "icon": _getIcon("bloodtype"), "color": Colors.red},
-  {"name": "Ultrasound", "icon": _getIcon("monitor_heart"), "color": Colors.purple},
-];
-
-
-// Dummy data for most visited hospitals
-List<Map<String, dynamic>> mostVisitedHospitals = [
-  {
-    'name': 'Pawlos Hospital',
-    'address': '123 Main St',
-    'phone': '123-456-7890',
-    'website': 'www.pawlos.com',
-    'description': 'A leading hospital in the city.',
-    'rating': 4.5,
-  },
-  {
-    'name': 'Tikur Anbesa Hospital',
-    'address': '456 Elm St',
-    'phone': '987-654-3210',
-    'website': 'www.tikuranbesa.com',
-    'description': 'Providing quality healthcare for over 50 years.',
-    'rating': 4.0,
-  },
-];
+import 'package:image_picker/image_picker.dart';
+import 'package:medical_test_locator/sample/dummy.dart';
+import 'package:medical_test_locator/screens/locations/hospital_location.dart';
+import 'package:medical_test_locator/uplaod/image_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -52,233 +15,322 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  TextEditingController _searchController = TextEditingController();
-  List<Map<String, dynamic>> _filteredTestCenters = testCenters;
- List<Map<String, dynamic>> _filteredHospitals = mostVisitedHospitals;
- List<Map<String, dynamic>> _filteredData = testCenters;
-
+  final TextEditingController _searchController = TextEditingController();
+  XFile? imagePicked;
+  bool _isLoading = false;
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+  Timer? _carouselTimer;
 
   @override
   void initState() {
     super.initState();
-    _filteredData = testCenters;
+    _startAutoSlide();
   }
-void _search() {
-  setState(() {
-    _filteredTestCenters = testCenters
-        .where((center) =>
-            center["name"].toLowerCase().contains(_searchController.text.toLowerCase()))
-        .toList();
 
-    _filteredHospitals = mostVisitedHospitals
-        .where((hospital) =>
-            hospital["name"].toLowerCase().contains(_searchController.text.toLowerCase()))
-        .toList();
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _carouselTimer?.cancel();
+    super.dispose();
+  }
 
-    // Update _filteredData based on search results
-    _filteredData = _filteredTestCenters;
-  });
-}
+  void _startAutoSlide() {
+    _carouselTimer = Timer.periodic(const Duration(seconds: 3), (Timer timer) {
+      if (_currentPage < 1) {
+        _currentPage++;
+      } else {
+        _currentPage = 0;
+      }
 
+      if (_pageController.hasClients) {
+        _pageController.animateToPage(
+          _currentPage,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _sendImageToApi(File file) async {
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(seconds: 2));
+    setState(() => _isLoading = false);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: const Color(0xFFFCFFF2),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF4A90E2),
-        title: const Text('Medical Test Locator', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        title: const Text(
+          'Medical Test Locator',
+          style: TextStyle(
+            color: Color(0xFF000000),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: false,
       ),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              // Title
-              const Text(
-                'Find Nearby Medical Test Centers Easily',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Stack(
+              children: [
+                // Background Image
+                Positioned.fill(
+                  child: Image.asset(
+                    'images/L.png',
+                    fit: BoxFit.cover,
+                  ),
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-
-              // Search Bar
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(25),
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 6,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
+                // Content Overlay
+                Column(
                   children: [
-                    const Icon(Icons.search, color: Colors.grey),
-                    Expanded(
+                    const SizedBox(height: 60),
+                    Text(
+                      'Find Nearby Medical Test Centers Easily',
+                      style: GoogleFonts.poppins(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF00796B),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Search for medical tests or scan your request paper',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.normal,
+                        color: Colors.black54,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    // Search Bar
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(25),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 5,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
                       child: TextField(
                         controller: _searchController,
-                        onChanged: (_) => _search(),
                         decoration: const InputDecoration(
-                          hintText: 'Search test centers...',
+                          prefixIcon: Icon(Icons.search, color: Colors.grey),
+                          hintText: "Search here",
                           border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(vertical: 14),
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.file_upload, color: Colors.grey),
-                      onPressed: () {
-                        // Placeholder for OCR scanning
-                      },
+                    const SizedBox(height: 20),
+                    // Upload and Scan Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildActionButton(Icons.file_upload, "Upload Image", () async {
+                          final picked = await MyImagePicker().pickFromGallery();
+                          if (picked != null) {
+                            setState(() => imagePicked = picked);
+                            await _sendImageToApi(File(picked.path));
+                          }
+                        }),
+                        const SizedBox(width: 15),
+                        _buildActionButton(Icons.camera_alt, "Scan Image", () async {
+                          final picked = await MyImagePicker().pickFromCamera();
+                          if (picked != null) {
+                            setState(() => imagePicked = picked);
+                            await _sendImageToApi(File(picked.path));
+                          }
+                        }),
+                      ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.camera_alt, color: Colors.grey),
-                      onPressed: () {
-                        // Placeholder for camera functionality
-                      },
-                    ),
+                    const SizedBox(height: 25),
                   ],
                 ),
-              ),
-
-              const SizedBox(height: 30),
-
-              // Test Centers Grid
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _filteredData.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 3 / 2,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                ),
+              ],
+            ),
+            // Auto-sliding Image Carousel
+            SizedBox(
+              height: 120,
+              child: PageView.builder(
+                controller: _pageController,
+                onPageChanged: (int page) {
+                  setState(() => _currentPage = page);
+                },
+                itemCount: 2,
                 itemBuilder: (context, index) {
-                  return GestureDetector(
-                    onTap: () {
-                      // Navigate to details page or show more information
-                    },
-                    child: Card(
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                      elevation: 4,
-                      shadowColor: _filteredData[index]['color'].withOpacity(0.4),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _filteredData[index]['icon'],
-                            size: 50,
-                            color: _filteredData[index]['color'],
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            _filteredData[index]['name'],
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                          ),
-                        ],
+                  List<String> images = ['images/L.jpeg', 'images/M.jpeg'];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        images[index],
+                        width: MediaQuery.of(context).size.width * 0.9,
+                        height: 120,
+                        fit: BoxFit.cover,
                       ),
                     ),
                   );
                 },
               ),
-
-              const SizedBox(height: 30),
-
-              // Most Visited Hospitals Section
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Most Visited Hospitals',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+            ),
+            const SizedBox(height: 8),
+            // Page Indicators
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(2, (index) {
+                return Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _currentPage == index 
+                        ? const Color(0xFF00796B) 
+                        : Colors.grey.withOpacity(0.4),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 25),
+            // Most Searched Section
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+              "Most Searched",
+              style: GoogleFonts.poppins(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF00796B),
+              ),
+              ),
+            ),
+            const SizedBox(height: 15),
+            // Test Categories
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: 4,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 3,
+              crossAxisSpacing: 15,
+              mainAxisSpacing: 15,
+              ),
+              itemBuilder: (context, index) {
+              List<Map<String, dynamic>> tests = [
+                {"title": "X-Ray", "icon": Icons.medical_services},
+                {"title": "CT-Scan", "icon": Icons.scanner},
+                {"title": "MRI", "icon": Icons.medical_services},
+                {"title": "Blood Test", "icon": Icons.bloodtype},
+              ];
+              return GestureDetector(
+                onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => HospitalLocation()),
+                );
+                },
+                child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                  boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12.withOpacity(0.1),
+                    blurRadius: 5,
+                    offset: const Offset(0, 3),
+                  ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                  Icon(
+                    tests[index]["icon"],
+                    color: Color(0xFF00796B),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    tests[index]["title"],
+                    style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: mostVisitedHospitals.length,
-                    itemBuilder: (context, index) {
-                      final hospital = mostVisitedHospitals[index];
-                      return GestureDetector(
-                        onTap: () {
-                          // Handle hospital click
-                        },
-                        child: Card(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          elevation: 3,
-                          shadowColor: Colors.grey.withOpacity(0.3),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  hospital['name'] ?? 'Unknown Hospital',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  hospital['address'] ?? 'No address available',
-                                  style: const TextStyle(color: Colors.black54),
-                                ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  'Phone: ${hospital['phone']}',
-                                  style: const TextStyle(color: Colors.black54),
-                                ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  'Website: ${hospital['website']}',
-                                  style: const TextStyle(color: Color(0xFF4A90E2), fontWeight: FontWeight.w500),
-                                ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  hospital['description'] ?? 'No description available',
-                                  style: const TextStyle(color: Colors.black87),
-                                ),
-                                const SizedBox(height: 5),
-                                Row(
-                                  children: List.generate(5, (starIndex) {
-                                    return Icon(
-                                      starIndex < hospital['rating']
-                                          ? Icons.star
-                                          : Icons.star_border,
-                                      color: Colors.yellow[700],
-                                      size: 20,
-                                    );
-                                  }),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+                ),
+              );
+              },
+            ),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(IconData icon, String label, VoidCallback onTap) {
+    return ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.black87,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      ),
+      icon: Icon(icon, size: 18),
+      label: Text(label, style: const TextStyle(fontSize: 14)),
+      onPressed: onTap,
+    );
+  }
+
+  Widget _buildTestCard(String title) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => HospitalLocation()),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12.withOpacity(0.1),
+              blurRadius: 5,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),
