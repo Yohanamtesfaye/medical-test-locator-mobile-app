@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:medical_test_locator/screens/home/home_screen.dart';
+import 'package:my_medical_app/screens/home/home_screen.dart';
 
 
 class BottomNavBar extends StatefulWidget {
